@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 13-10-2025 a las 17:32:34
+-- Tiempo de generación: 13-10-2025 a las 17:51:12
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -20,6 +20,39 @@ SET time_zone = "+00:00";
 --
 -- Base de datos: `clinica`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `appointments`
+--
+
+CREATE TABLE `appointments` (
+  `id` int(11) NOT NULL,
+  `doctor_id` int(11) NOT NULL,
+  `date` date NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `doctors`
+--
+
+CREATE TABLE `doctors` (
+  `id` int(11) NOT NULL,
+  `name` varchar(120) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `doctors`
+--
+
+INSERT INTO `doctors` (`id`, `name`) VALUES
+(1, 'Dra. María Pérez'),
+(2, 'Dr. Juan Gómez'),
+(3, 'Dra. Sofía Ramírez');
 
 -- --------------------------------------------------------
 
@@ -47,6 +80,30 @@ INSERT INTO `pacientes` (`id`, `nombre_completo`, `dni`, `contacto`, `fecha_naci
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `pagos`
+--
+
+CREATE TABLE `pagos` (
+  `id` int(11) NOT NULL,
+  `paciente_id` int(11) NOT NULL,
+  `servicio` varchar(100) NOT NULL,
+  `monto` decimal(10,2) NOT NULL,
+  `metodo_pago` varchar(50) NOT NULL,
+  `tarjeta_ultimos4` varchar(4) DEFAULT NULL,
+  `desea_comprobante` tinyint(1) DEFAULT 0,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `pagos`
+--
+
+INSERT INTO `pagos` (`id`, `paciente_id`, `servicio`, `monto`, `metodo_pago`, `tarjeta_ultimos4`, `desea_comprobante`, `creado_en`) VALUES
+(1, 1, 'Consulta médica general', 80.00, 'Tarjeta de crédito', '4567', 1, '2025-10-13 15:41:28');
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `usuarios`
 --
 
@@ -70,11 +127,31 @@ INSERT INTO `usuarios` (`id`, `nombre`, `email`, `password_hash`, `creado_en`) V
 --
 
 --
+-- Indices de la tabla `appointments`
+--
+ALTER TABLE `appointments`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_appointments` (`doctor_id`,`date`);
+
+--
+-- Indices de la tabla `doctors`
+--
+ALTER TABLE `doctors`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indices de la tabla `pacientes`
 --
 ALTER TABLE `pacientes`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `dni` (`dni`);
+
+--
+-- Indices de la tabla `pagos`
+--
+ALTER TABLE `pagos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `paciente_id` (`paciente_id`);
 
 --
 -- Indices de la tabla `usuarios`
@@ -88,9 +165,27 @@ ALTER TABLE `usuarios`
 --
 
 --
+-- AUTO_INCREMENT de la tabla `appointments`
+--
+ALTER TABLE `appointments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `doctors`
+--
+ALTER TABLE `doctors`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
 -- AUTO_INCREMENT de la tabla `pacientes`
 --
 ALTER TABLE `pacientes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `pagos`
+--
+ALTER TABLE `pagos`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
@@ -98,6 +193,22 @@ ALTER TABLE `pacientes`
 --
 ALTER TABLE `usuarios`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- Restricciones para tablas volcadas
+--
+
+--
+-- Filtros para la tabla `appointments`
+--
+ALTER TABLE `appointments`
+  ADD CONSTRAINT `fk_appointments_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `pagos`
+--
+ALTER TABLE `pagos`
+  ADD CONSTRAINT `pagos_ibfk_1` FOREIGN KEY (`paciente_id`) REFERENCES `pacientes` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
