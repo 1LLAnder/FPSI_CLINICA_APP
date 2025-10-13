@@ -1,6 +1,6 @@
 <?php
 $DB_HOST = '127.0.0.1';
-$DB_NAME = 'clinica_db';
+$DB_NAME = 'clinica';
 $DB_USER = 'root';
 $DB_PASS = '';
 
