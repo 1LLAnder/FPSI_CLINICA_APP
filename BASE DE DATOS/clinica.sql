@@ -30,6 +30,7 @@ SET time_zone = "+00:00";
 CREATE TABLE `appointments` (
   `id` int(11) NOT NULL,
   `doctor_id` int(11) NOT NULL,
+  `paciente_id` int(11) DEFAULT NULL,
   `date` date NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -203,6 +204,9 @@ ALTER TABLE `usuarios`
 --
 ALTER TABLE `appointments`
   ADD CONSTRAINT `fk_appointments_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `appointments`
+  ADD CONSTRAINT `fk_appointments_paciente` FOREIGN KEY (`paciente_id`) REFERENCES `pacientes` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `pagos`

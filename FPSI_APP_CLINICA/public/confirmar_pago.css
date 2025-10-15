@@ -1,0 +1,89 @@
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+.card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px 24px 22px 24px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    max-width: 400px;
+    width: 100%;
+}
+.card h2 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-weight: 700;
+    color: #22303c;
+}
+.form-group {
+    margin-bottom: 14px;
+}
+label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    color: #22303c;
+    font-size: 15px;
+}
+input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    background: #f9fafb;
+    font-size: 15px;
+    margin-bottom: 2px;
+    transition: border-color 0.18s;
+}
+input[type="text"]:focus, input[type="number"]:focus {
+    border-color: #3b82f6;
+    outline: none;
+    background: #fff;
+}
+input[type="text"]::placeholder {
+    color: #8b98a9;
+    font-style: italic;
+    opacity: 1;
+}
+.flex {
+    display: flex;
+    gap: 8px;
+}
+.actions {
+    margin-top: 18px;
+    display: flex;
+    justify-content: space-between;
+}
+.btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 15px;
+    transition: background 0.18s;
+}
+.btn-primary {
+    background: #2563eb;
+    color: #fff;
+}
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+.btn-secondary {
+    background: #e5e7eb;
+    color: #22303c;
+}
+.btn-secondary:hover {
+    background: #cbd5e1;
+}
+.card p {
+    margin: 6px 0 8px 0;
+    color: #374151;
+    font-size: 15px;
+}

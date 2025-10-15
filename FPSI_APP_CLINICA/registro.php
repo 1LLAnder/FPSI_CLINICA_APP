@@ -3,31 +3,62 @@ require 'config/db.php';
 
 $mensaje = "";
 $datos = ['nombre' => '', 'dni' => '', 'contacto' => '', 'fechaNacimiento' => '', 'alergias' => ''];
+$paciente_id = null;
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $accion = $_POST['accion'] ?? '';
     $dni = trim($_POST['dni'] ?? '');
 
-    // Prellenar campos si vienen
     $datos['nombre'] = trim($_POST['nombre'] ?? '');
     $datos['dni'] = $dni;
     $datos['contacto'] = trim($_POST['contacto'] ?? '');
     $datos['fechaNacimiento'] = $_POST['fechaNacimiento'] ?? '';
     $datos['alergias'] = trim($_POST['alergias'] ?? '');
 
+    $fechaValida = true;
+    if (
+        ($accion === "registrar" || $accion === "editar") &&
+        $datos['fechaNacimiento']
+    ) {
+        $fnac = $datos['fechaNacimiento'];
+        $hoy = date('Y-m-d');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fnac) ||
+            !checkdate((int)substr($fnac,5,2), (int)substr($fnac,8,2), (int)substr($fnac,0,4))
+        ) {
+            $fechaValida = false;
+            $mensaje = "❌ Fecha de nacimiento inválida.";
+        } elseif ($fnac < '1900-01-01') {
+            $fechaValida = false;
+            $mensaje = "❌ Fecha de nacimiento demasiado antigua.";
+        } elseif ($fnac > $hoy) {
+            $fechaValida = false;
+            $mensaje = "❌ La fecha de nacimiento no puede ser en el futuro.";
+        } elseif ($fnac > '2025-12-31') {
+            $fechaValida = false;
+            $mensaje = "❌ La fecha de nacimiento no puede ser posterior a 2025.";
+        }
+    }
+
     if ($accion === "registrar") {
         if ($datos['nombre'] && $datos['dni']) {
-            try {
-                $stmt = $pdo->prepare("INSERT INTO pacientes (nombre_completo, dni, contacto, fecha_nacimiento, alergias)
+            if ($fechaValida) {
+                try {
+                    $stmt = $pdo->prepare("INSERT INTO pacientes (nombre_completo, dni, contacto, fecha_nacimiento, alergias)
                                        VALUES (?, ?, ?, ?, ?)");
-                $stmt->execute([$datos['nombre'], $datos['dni'], $datos['contacto'], $datos['fechaNacimiento'], $datos['alergias']]);
-                $mensaje = "✅ Paciente registrado con éxito.";
-                $datos = ['nombre' => '', 'dni' => '', 'contacto' => '', 'fechaNacimiento' => '', 'alergias' => ''];
-            } catch (PDOException $e) {
-                if ($e->getCode() == 23000) {
-                    $mensaje = "❌ Ya existe un paciente con ese DNI.";
-                } else {
-                    $mensaje = "❌ Error al registrar: " . $e->getMessage();
+                    $stmt->execute([$datos['nombre'], $datos['dni'], $datos['contacto'], $datos['fechaNacimiento'], $datos['alergias']]);
+                    $mensaje = "✅ Paciente registrado con éxito.";
+                    $paciente_id = $pdo->lastInsertId();
+                    $datos = ['nombre' => '', 'dni' => '', 'contacto' => '', 'fechaNacimiento' => '', 'alergias' => ''];
+                } catch (PDOException $e) {
+                    if ($e->getCode() == 23000) {
+                        $stmt = $pdo->prepare("SELECT id FROM pacientes WHERE dni = ?");
+                        $stmt->execute([$datos['dni']]);
+                        $row = $stmt->fetch();
+                        if ($row) $paciente_id = $row['id'];
+                        $mensaje = "❌ Ya existe un paciente con ese DNI.";
+                    } else {
+                        $mensaje = "❌ Error al registrar: " . $e->getMessage();
+                    }
                 }
             }
         } else {
@@ -45,6 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $datos['contacto'] = $paciente['contacto'];
             $datos['fechaNacimiento'] = $paciente['fecha_nacimiento'];
             $datos['alergias'] = $paciente['alergias'];
+            $paciente_id = $paciente['id'];
             $mensaje = "👁 Paciente encontrado. Puedes editar o eliminar.";
         } else {
             $mensaje = "❌ No se encontró un paciente con ese DNI.";
@@ -52,9 +84,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     if ($accion === "editar" && $dni) {
-        $stmt = $pdo->prepare("UPDATE pacientes SET nombre_completo=?, contacto=?, fecha_nacimiento=?, alergias=? WHERE dni=?");
-        $stmt->execute([$datos['nombre'], $datos['contacto'], $datos['fechaNacimiento'], $datos['alergias'], $dni]);
-        $mensaje = "✏️ Paciente actualizado correctamente.";
+        if ($fechaValida) {
+            $stmt = $pdo->prepare("UPDATE pacientes SET nombre_completo=?, contacto=?, fecha_nacimiento=?, alergias=? WHERE dni=?");
+            $stmt->execute([$datos['nombre'], $datos['contacto'], $datos['fechaNacimiento'], $datos['alergias'], $dni]);
+            $mensaje = "✏️ Paciente actualizado correctamente.";
+            $stmt = $pdo->prepare("SELECT id FROM pacientes WHERE dni = ?");
+            $stmt->execute([$dni]);
+            $row = $stmt->fetch();
+            if ($row) $paciente_id = $row['id'];
+        }
     }
 
     if ($accion === "eliminar" && $dni) {
@@ -76,71 +114,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <title>Registro de Pacientes</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f4f8;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .registro {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            width: 420px;
-        }
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #22303c;
-        }
-        input[type="text"], input[type="date"] {
-            width: 100%;
-            padding: 12px 15px;
-            margin: 8px 0;
-            box-sizing: border-box;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        button {
-            background-color: #1860ff;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            margin-top: 10px;
-            cursor: pointer;
-            border-radius: 6px;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #0f45cc;
-        }
-        .btn-secondary {
-            background-color: #e8ebf0;
-            color: #22303c;
-            margin-left: 5px;
-        }
-        .btn-secondary:hover {
-            background-color: #d3d8df;
-        }
-        .mensaje {
-            margin-bottom: 15px;
-            font-weight: bold;
-            text-align: center;
-        }
-        .mensaje.error {
-            color: red;
-        }
-        .mensaje.success {
-            color: green;
-        }
-    </style>
+    <link rel="stylesheet" href="public/registro.css">
 </head>
 <body>
-
 <div class="registro">
     <h2>Gestión de Pacientes</h2>
 
@@ -151,11 +127,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <?php endif; ?>
 
     <form method="POST" action="registro.php">
-        <input type="text" name="nombre" placeholder="Nombre completo (máx. 120)" maxlength="120" value="<?= htmlspecialchars($datos['nombre']) ?>" required>
+        <input type="text" name="nombre" placeholder="Nombre completo (máx. 60)" maxlength="60" value="<?= htmlspecialchars($datos['nombre']) ?>">
         <input type="text" name="dni" placeholder="DNI (máx. 8)" maxlength="8" value="<?= htmlspecialchars($datos['dni']) ?>" required>
-        <input type="text" name="contacto" placeholder="Teléfono o correo (máx. 120)" maxlength="120" value="<?= htmlspecialchars($datos['contacto']) ?>">
-        <input type="date" name="fechaNacimiento" placeholder="Fecha de nacimiento" value="<?= htmlspecialchars($datos['fechaNacimiento']) ?>">
-        <input type="text" name="alergias" placeholder="Alergias o enfermedades" maxlength="255" value="<?= htmlspecialchars($datos['alergias']) ?>">
+        <input type="text" name="contacto" placeholder="Teléfono o correo (máx. 60)" maxlength="60" value="<?= htmlspecialchars($datos['contacto']) ?>">
+        <label for="fechaNacimiento" style="font-size:14px;color:#22303c;">Fecha de nacimiento (DD/MM/AAAA)</label>
+        <input type="date" id="fechaNacimiento" name="fechaNacimiento" value="<?= htmlspecialchars($datos['fechaNacimiento']) ?>">
+        <input type="text" name="alergias" placeholder="Alergias o enfermedades" maxlength="120" value="<?= htmlspecialchars($datos['alergias']) ?>">
 
         <div style="margin-top: 12px;">
             <button type="submit" name="accion" value="registrar">Registrar</button>
@@ -164,7 +141,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <button type="submit" name="accion" value="eliminar" class="btn-secondary" onclick="return confirm('¿Seguro que deseas eliminar este paciente?');">Eliminar</button>
         </div>
     </form>
-</div>
 
+    <?php if ($paciente_id): ?>
+        <form method="get" action="citas_medicas.php" style="margin-top:18px;text-align:center;">
+            <input type="hidden" name="paciente_id" value="<?= (int)$paciente_id ?>">
+            <button type="submit" class="btn-primary" style="width:100%;background:#1860ff;color:#fff;padding:12px 0;border-radius:6px;font-size:16px;">Continuar para agendar cita</button>
+        </form>
+    <?php endif; ?>
+</div>
 </body>
 </html>

@@ -56,12 +56,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'book') {
       $doctor_id = (int)($_POST['doctor_id'] ?? 0);
       $date = trim($_POST['date'] ?? '');
-      if ($doctor_id <= 0 || !valid_date($date)) json_response(['ok'=>false,'error'=>'Datos inválidos.'],400);
+      $paciente_id = (int)($_POST['paciente_id'] ?? 0);
+      if ($doctor_id <= 0 || !valid_date($date) || $paciente_id <= 0) json_response(['ok'=>false,'error'=>'Datos inválidos.'],400);
       if ($date < date('Y-m-d')) json_response(['ok'=>false,'error'=>'No se permiten fechas pasadas.'],400);
 
-      $stmt = pdo()->prepare('INSERT INTO appointments (doctor_id,date) VALUES (?,?)');
+      $stmt = pdo()->prepare('INSERT INTO appointments (doctor_id, paciente_id, date) VALUES (?,?,?)');
       try {
-        $stmt->execute([$doctor_id,$date]);
+        $stmt->execute([$doctor_id, $paciente_id, $date]);
         json_response(['ok'=>true,'message'=>'Cita agendada correctamente.']);
       } catch (PDOException $e) {
         if ($e->getCode()==='23000') json_response(['ok'=>false,'error'=>'Ese día ya está ocupado para el doctor.'],409);
@@ -116,6 +117,13 @@ function ymLink(int $y, int $m): string {
 $prev = (clone $firstDay)->modify('-1 month');
 $next = (clone $firstDay)->modify('+1 month');
 
+$paciente_id = isset($_GET['paciente_id']) ? (int)$_GET['paciente_id'] : 0;
+if ($paciente_id <= 0) {
+  // Redirigir si no hay paciente
+  header("Location: registro.php");
+  exit;
+}
+
 ?>
 <!doctype html>
 <html lang="es">
@@ -123,36 +131,7 @@ $next = (clone $firstDay)->modify('+1 month');
   <meta charset="utf-8">
   <title>Citas médicas</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root { --border:#e5e7eb; --muted:#6b7280; --ink:#111827; --bg:#f8fafc; --primary:#f43f5e; --primary-ink:#fff; --sel:#0ea5e9; }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
-    .wrap{max-width:960px;margin:36px auto;padding:0 16px}
-    .header{font-size:clamp(22px,3vw,28px);font-weight:800;margin-bottom:16px}
-    .card{background:#fff;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.06);padding:20px}
-    .toolbar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
-    .left{display:flex;align-items:center;gap:8px}
-    .btn{border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:600}
-    .btn-ghost{background:#f3f4f6}
-    .month{font-weight:800}
-    .sel-doctor{display:flex;align-items:center;gap:8px}
-    select{border:1px solid var(--border);border-radius:8px;padding:8px 10px}
-    .cal{border:1px solid var(--border);border-radius:12px;overflow:hidden}
-    .cal-head, .cal-row{display:grid;grid-template-columns:repeat(7,1fr)}
-    .cal-head div{background:#fafafa;border-bottom:1px solid var(--border);padding:10px;font-weight:700;text-align:center;font-size:14px}
-    .cell{height:76px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:8px;position:relative;cursor:pointer}
-    .cell:last-child{border-right:none}
-    .cell.muted{color:var(--muted);background:#fff}
-    .daynum{font-weight:700;font-size:14px}
-    .cell.past{color:#9ca3af;pointer-events:none;background:#f9fafb}
-    .cell.selected{outline:2px solid var(--sel);outline-offset:-2px;background:#f0f9ff}
-    .cell.busy::after{
-      content:"•"; position:absolute; right:8px; bottom:6px; font-weight:900;
-    }
-    .footer{display:flex;justify-content:flex-end;margin-top:16px}
-    .cta{background:var(--primary);color:var(--primary-ink);border:none;border-radius:12px;padding:14px 18px;font-weight:800;cursor:pointer}
-    .muted{color:var(--muted);font-size:13px;margin-top:6px}
-  </style>
+  <link rel="stylesheet" href="public/citas_medicas.css">
 </head>
 <body>
   <div class="wrap">
@@ -215,10 +194,10 @@ $next = (clone $firstDay)->modify('+1 month');
       <div class="muted">Selecciona un día disponible para el doctor elegido.</div>
     </div>
   </div>
-
   <script>
     // Navegación mes
     const y0 = <?= (int)$y ?>, m0 = <?= (int)$m ?>;
+    const pacienteId = <?= (int)$paciente_id ?>;
     const monthLbl = document.getElementById('monthLbl');
     const cal = document.getElementById('cal');
     const btnPrev = document.getElementById('prev');
@@ -228,7 +207,10 @@ $next = (clone $firstDay)->modify('+1 month');
     const selDoctor = document.getElementById('doctor');
     let selectedCell = null;
 
-    function gotoYM(y,m){ window.location.search = `?y=${y}&m=${m}`; }
+    function gotoYM(y,m){
+      // Mantener paciente_id en la URL
+      window.location.search = `?y=${y}&m=${m}&paciente_id=${pacienteId}`;
+    }
 
     btnPrev.onclick = () => {
       let y = y0, m = m0-1; if(m<1){m=12;y--;} gotoYM(y,m);
@@ -236,7 +218,10 @@ $next = (clone $firstDay)->modify('+1 month');
     btnNext.onclick = () => {
       let y = y0, m = m0+1; if(m>12){m=1;y++;} gotoYM(y,m);
     };
-    btnToday.onclick = () => { window.location.href='?'; };
+    btnToday.onclick = () => { 
+      // Mantener paciente_id al volver a hoy
+      window.location.href='?paciente_id='+pacienteId; 
+    };
 
     // Selección de día + ver disponibilidad inmediata
     cal.addEventListener('click', async (e)=>{
@@ -282,16 +267,12 @@ $next = (clone $firstDay)->modify('+1 month');
       if(!selectedCell) return alert('Primero elige un día disponible.');
       const date = selectedCell.dataset.date;
 
-      const res = await post('book', {doctor_id: selDoctor.value, date});
+      const res = await post('book', {doctor_id: selDoctor.value, date, paciente_id: pacienteId});
       if(res.status===200 && res.data.ok){
-        alert('Cita agendada ✅');
-        // refrescar puntos de ocupación
-        selectedCell.classList.remove('selected');
-        selectedCell = null;
-        paintBusy();
+        // Redirigir a pago
+        window.location.href = `confirmar_pago.php?paciente_id=${pacienteId}&doctor_id=${selDoctor.value}&date=${date}`;
       } else if (res.status===409){
         alert('Ese día ya está ocupado para el doctor. Por favor, elige otro día.');
-        // quitar selección si se “robó” el cupo
         if(selectedCell) selectedCell.classList.remove('selected'), selectedCell=null;
         paintBusy();
       } else {

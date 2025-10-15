@@ -2,10 +2,25 @@
 // confirmar_pago.php
 require_once 'config/db.php';
 
-// Simulamos datos recibidos (en práctica vienen desde una cita previa)
-$paciente_id = 1; // ID de la base de datos
-$paciente_nombre = "Juan Pérez";
-$servicio = "Consulta médica general";
+$paciente_id = isset($_GET['paciente_id']) ? (int)$_GET['paciente_id'] : 0;
+$doctor_id = isset($_GET['doctor_id']) ? (int)$_GET['doctor_id'] : 0;
+$date = $_GET['date'] ?? '';
+
+if ($paciente_id <= 0 || $doctor_id <= 0 || !$date) {
+  echo "<p>Datos incompletos. <a href='registro.php'>Volver</a></p>";
+  exit;
+}
+
+// Obtener datos del paciente y doctor
+$stmt = $pdo->prepare("SELECT nombre_completo, contacto FROM pacientes WHERE id=?");
+$stmt->execute([$paciente_id]);
+$paciente = $stmt->fetch();
+
+$stmt = $pdo->prepare("SELECT name FROM doctors WHERE id=?");
+$stmt->execute([$doctor_id]);
+$doctor = $stmt->fetch();
+
+$servicio = "Consulta médica con " . ($doctor ? $doctor['name'] : "Doctor");
 $monto = 80.00;
 $metodo_pago = "Tarjeta de crédito";
 
@@ -19,7 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          VALUES (?, ?, ?, ?, ?, ?)");
   $stmt->execute([$paciente_id, $servicio, $monto, $metodo_pago, $tarjeta, $desea_comprobante]);
 
-  echo "<p>✅ Pago registrado exitosamente.</p>";
+  // Redirigir a pantalla de éxito
+  header("Location: pago_exitoso.php");
   exit;
 }
 ?>
@@ -29,34 +45,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="UTF-8">
   <title>Confirmar Pago</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: #f3f4f6; display: flex; align-items: center; justify-content: center; height: 100vh; }
-    .card {
-      background: white; border-radius: 16px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-      max-width: 400px; width: 100%;
-    }
-    .card h2 { margin-top: 0; }
-    .form-group { margin-bottom: 12px; }
-    label { display: block; margin-bottom: 4px; font-weight: bold; }
-    input[type="text"], input[type="number"] {
-      width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px;
-    }
-    .flex { display: flex; gap: 8px; }
-    .actions { margin-top: 16px; display: flex; justify-content: space-between; }
-    .btn {
-      padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
-    }
-    .btn-primary { background: #3b82f6; color: white; }
-    .btn-secondary { background: #e5e7eb; }
-  </style>
+  <link rel="stylesheet" href="public/confirmar_pago.css">
 </head>
 <body>
   <form method="POST" class="card">
     <h2>Confirmar Pago</h2>
     <p>Verifica los datos antes de confirmar la transacción.</p>
 
-    <p><strong>Paciente:</strong> <?= htmlspecialchars($paciente_nombre) ?></p>
+    <p><strong>Paciente:</strong> <?= htmlspecialchars($paciente['nombre_completo'] ?? '') ?></p>
+    <p><strong>Contacto:</strong> <?= htmlspecialchars($paciente['contacto'] ?? '') ?></p>
     <p><strong>Servicio:</strong> <?= htmlspecialchars($servicio) ?></p>
+    <p><strong>Fecha de cita:</strong> <?= htmlspecialchars($date) ?></p>
     <p><strong>Monto total:</strong> S/ <?= number_format($monto, 2) ?></p>
     <p><strong>Método de pago:</strong> <?= $metodo_pago ?></p>
 
