@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 13-10-2025 a las 17:51:12
+-- Tiempo de generación: 16-10-2025 a las 07:04:20
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -30,10 +30,10 @@ SET time_zone = "+00:00";
 CREATE TABLE `appointments` (
   `id` int(11) NOT NULL,
   `doctor_id` int(11) NOT NULL,
-  `paciente_id` int(11) DEFAULT NULL,
+  `paciente_id` int(11) NOT NULL,
   `date` date NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `status` enum('pendiente','confirmada','cancelada') DEFAULT 'pendiente'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -71,13 +71,6 @@ CREATE TABLE `pacientes` (
   `creado_en` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Volcado de datos para la tabla `pacientes`
---
-
-INSERT INTO `pacientes` (`id`, `nombre_completo`, `dni`, `contacto`, `fecha_nacimiento`, `alergias`, `creado_en`) VALUES
-(1, 'Matias Austin Noa Aiquipa', '72080726', '988820299', '2005-01-23', 'Coronavirus', '2025-10-13 15:29:06');
-
 -- --------------------------------------------------------
 
 --
@@ -94,13 +87,6 @@ CREATE TABLE `pagos` (
   `desea_comprobante` tinyint(1) DEFAULT 0,
   `creado_en` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `pagos`
---
-
-INSERT INTO `pagos` (`id`, `paciente_id`, `servicio`, `monto`, `metodo_pago`, `tarjeta_ultimos4`, `desea_comprobante`, `creado_en`) VALUES
-(1, 1, 'Consulta médica general', 80.00, 'Tarjeta de crédito', '4567', 1, '2025-10-13 15:41:28');
 
 -- --------------------------------------------------------
 
@@ -121,7 +107,7 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id`, `nombre`, `email`, `password_hash`, `creado_en`) VALUES
-(1, 'Admin', 'admin@demo.com', '$2y$10$Qp7p1r.w3sGvD1S3N4aKCOk0O1b3oK8zZ9y5b2zQw8z2wE3Y1mQDa', '2025-10-13 15:20:47');
+(1, 'Admin', 'admin@demo.com', '$2y$10$Qp7p1r.w3sGvD1S3N4aKCOk0O1b3oK8zZ9y5b2zQw8z2wE3Y1mQDa', '2025-10-16 03:56:01');
 
 --
 -- Índices para tablas volcadas
@@ -132,7 +118,8 @@ INSERT INTO `usuarios` (`id`, `nombre`, `email`, `password_hash`, `creado_en`) V
 --
 ALTER TABLE `appointments`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `uq_appointments` (`doctor_id`,`date`);
+  ADD UNIQUE KEY `u_doctor_date` (`doctor_id`,`date`),
+  ADD KEY `paciente_id` (`paciente_id`);
 
 --
 -- Indices de la tabla `doctors`
@@ -169,7 +156,7 @@ ALTER TABLE `usuarios`
 -- AUTO_INCREMENT de la tabla `appointments`
 --
 ALTER TABLE `appointments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `doctors`
@@ -181,13 +168,13 @@ ALTER TABLE `doctors`
 -- AUTO_INCREMENT de la tabla `pacientes`
 --
 ALTER TABLE `pacientes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `pagos`
 --
 ALTER TABLE `pagos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`
@@ -203,10 +190,8 @@ ALTER TABLE `usuarios`
 -- Filtros para la tabla `appointments`
 --
 ALTER TABLE `appointments`
-  ADD CONSTRAINT `fk_appointments_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE `appointments`
-  ADD CONSTRAINT `fk_appointments_paciente` FOREIGN KEY (`paciente_id`) REFERENCES `pacientes` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+  ADD CONSTRAINT `appointments_ibfk_1` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`),
+  ADD CONSTRAINT `appointments_ibfk_2` FOREIGN KEY (`paciente_id`) REFERENCES `pacientes` (`id`);
 
 --
 -- Filtros para la tabla `pagos`
